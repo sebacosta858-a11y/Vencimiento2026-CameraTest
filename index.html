@@ -1,454 +1,76 @@
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vencimiento2026 — Prueba de cámara</title>
-    <!-- Importación de la biblioteca @zxing/browser desde CDN oficial UMD -->
-    <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --danger: #dc2626;
-            --danger-hover: #b91c1c;
-            --bg: #f8fafc;
-            --card-bg: #ffffff;
-            --text: #1e293b;
-            --border: #e2e8f0;
-            --success: #16a34a;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            box-sizing: border-box;
-        }
-        .container {
-            width: 100%;
-            max-width: 480px;
-            background: var(--card-bg);
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        h1 {
-            font-size: 1.25rem;
-            margin-top: 0;
-            margin-bottom: 16px;
-            text-align: center;
-            color: var(--text);
-        }
-        .status-box {
-            background: #f1f5f9;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 16px;
-            font-size: 0.9rem;
-        }
-        .status-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-        }
-        .status-item:last-child {
-            margin-bottom: 0;
-        }
-        .badge {
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-        }
-        .badge.true { background: #dcfce7; color: var(--success); }
-        .badge.false { background: #fee2e2; color: var(--danger); }
-        
-        .controls {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 12px 16px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            width: 100%;
-        }
-        button:hover { background-color: var(--primary-hover); }
-        button:disabled { background-color: var(--border); color: #94a3b8; cursor: not-allowed; }
-        button.danger { background-color: var(--danger); }
-        button.danger:hover { background-color: var(--danger-hover); }
 
-        .video-container {
-            position: relative;
-            width: 100%;
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            aspect-ratio: 4 / 3;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 16px;
-        }
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: none;
-        }
-        .video-placeholder {
-            color: #94a3b8;
-            font-size: 0.9rem;
-            text-align: center;
-            padding: 20px;
-        }
-        .result-box {
-            background: #f8fafc;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 16px;
-            font-size: 0.9rem;
-        }
-        .result-item {
-            margin-bottom: 4px;
-        }
-        .result-item:last-child {
-            margin-bottom: 0;
-        }
-        .log-area {
-            background: #0f172a;
-            color: #38bdf8;
-            font-family: monospace;
-            font-size: 0.8rem;
-            padding: 12px;
-            border-radius: 8px;
-            max-height: 140px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-    </style>
+```
+<title>Vencimiento2026 — Prueba de cámara</title>
+
+<link rel="stylesheet" href="css/styles.css">
+
+<!-- Biblioteca ZXing Browser 0.2.1 -->
+<script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
+```
+
 </head>
+
 <body>
     <div class="container">
         <h1>Vencimiento2026 — Prueba de cámara</h1>
-        
-        <div class="status-box">
-            <div class="status-item">
-                <span>Contexto Seguro (HTTPS / Local):</span>
-                <span id="secureStatus" class="badge">Verificando...</span>
-            </div>
-            <div class="status-item">
-                <span>API getUserMedia:</span>
-                <span id="apiStatus" class="badge">Verificando...</span>
-            </div>
+
+```
+    <div class="status-box">
+        <div class="status-item">
+            <span>Contexto Seguro (HTTPS / Local):</span>
+            <span id="secureStatus" class="badge">Verificando...</span>
         </div>
 
-        <div class="result-box">
-            <div class="result-item"><strong>Lector:</strong> <span id="readerState">Inactivo</span></div>
-            <div class="result-item"><strong>Código leído:</strong> <span id="barcodeValue">-</span></div>
-            <div class="result-item"><strong>Formato:</strong> <span id="barcodeFormat">-</span></div>
+        <div class="status-item">
+            <span>API getUserMedia:</span>
+            <span id="apiStatus" class="badge">Verificando...</span>
         </div>
-
-        <div class="controls">
-            <button id="btnStart">Solicitar permiso y abrir cámara</button>
-            <button id="btnStop" class="danger" disabled>Cerrar cámara</button>
-        </div>
-
-        <div class="video-container">
-            <div id="videoPlaceholder" class="video-placeholder">La cámara está desactivada</div>
-            <video id="videoElement" autoplay playsinline muted></video>
-        </div>
-
-        <div id="logArea" class="log-area">Estado: Esperando acción del usuario...</div>
     </div>
 
-    <script>
-        const secureStatus = document.getElementById('secureStatus');
-        const apiStatus = document.getElementById('apiStatus');
-        const btnStart = document.getElementById('btnStart');
-        const btnStop = document.getElementById('btnStop');
-        const videoElement = document.getElementById('videoElement');
-        const videoPlaceholder = document.getElementById('videoPlaceholder');
-        const logArea = document.getElementById('logArea');
-        const readerState = document.getElementById('readerState');
-        const barcodeValue = document.getElementById('barcodeValue');
-        const barcodeFormat = document.getElementById('barcodeFormat');
+    <div class="result-box">
+        <div class="result-item">
+            <strong>Lector:</strong>
+            <span id="readerState">Inactivo</span>
+        </div>
 
-        let currentStream = null;
-        let isRequesting = false;
-        let activeRequestId = 0;
-        let scannerControls = null; 
-        let lastScannedCode = null; 
+        <div class="result-item">
+            <strong>Código leído:</strong>
+            <span id="barcodeValue">-</span>
+        </div>
 
-        // Verificación de contexto seguro y soporte de la API
-        const isSecure = window.isSecureContext;
-        secureStatus.textContent = isSecure ? 'Sí' : 'No';
-        secureStatus.className = `badge ${isSecure}`;
+        <div class="result-item">
+            <strong>Formato:</strong>
+            <span id="barcodeFormat">-</span>
+        </div>
+    </div>
 
-        const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
-        apiStatus.textContent = hasGetUserMedia ? 'Disponible' : 'No disponible';
-        apiStatus.className = `badge ${hasGetUserMedia}`;
+    <div class="controls">
+        <button id="btnStart">Solicitar permiso y abrir cámara</button>
+        <button id="btnStop" class="danger" disabled>Cerrar cámara</button>
+    </div>
 
-        function log(message, isError = false) {
-            const timestamp = new Date().toLocaleTimeString();
-            logArea.textContent = `[${timestamp}] ${message}\n` + logArea.textContent;
-            console.log(message);
-        }
+    <div class="video-container">
+        <div id="videoPlaceholder" class="video-placeholder">
+            La cámara está desactivada
+        </div>
 
-        function handleCameraError(error) {
-            let userMessage = '';
-            const errorName = error.name || 'UnknownError';
+        <video id="videoElement" autoplay playsinline muted></video>
+    </div>
 
-            switch (errorName) {
-                case 'NotAllowedError':
-                case 'PermissionDeniedError':
-                    userMessage = 'Permiso denegado. Debes autorizar el acceso a la cámara en los ajustes.';
-                    break;
-                case 'NotFoundError':
-                case 'DevicesNotFoundError':
-                    userMessage = 'No se encontró ninguna cámara trasera compatible en el dispositivo.';
-                    break;
-                case 'NotReadableError':
-                case 'TrackStartError':
-                    userMessage = 'La cámara está siendo utilizada por otra aplicación o hay un bloqueo de hardware.';
-                    break;
-                case 'OverconstrainedError':
-                case 'ConstraintNotSatisfiedError':
-                    userMessage = 'No se pudo aplicar la restricción exacta (facingMode: environment).';
-                    break;
-                case 'SecurityError':
-                    userMessage = 'Error de seguridad. La API requiere un contexto seguro (HTTPS o localhost).';
-                    break;
-                case 'AbortError':
-                    userMessage = 'La solicitud de la cámara fue abortada por interrupción del sistema.';
-                    break;
-                default:
-                    userMessage = `Error imprevisto (${errorName}): ${error.message || 'Sin descripción'}`;
-                    break;
-            }
+    <div id="logArea" class="log-area">
+        Estado: Esperando acción del usuario...
+    </div>
+</div>
 
-            log(`Error: ${userMessage}`, true);
-        }
+<!-- Código JavaScript del escáner -->
+<script src="js/scanner.js"></script>
+```
 
-        // Liberación de pistas individuales del MediaStream
-        function stopStreamTracks(streamToStop) {
-            if (!streamToStop) return;
-            streamToStop.getTracks().forEach(track => {
-                track.onended = null;
-                track.stop();
-            });
-        }
-
-        // Función centralizada para detener la cámara y el lector de ZXing de la sesión activa
-        function stopCamera(reasonMessage) {
-            activeRequestId++; // Invalida cualquier operación pendiente
-
-            if (scannerControls) {
-                try {
-                    scannerControls.stop();
-                } catch (e) {
-                    // Silenciar errores menores si ya estaba detenido
-                }
-                scannerControls = null;
-            }
-            
-            if (currentStream) {
-                stopStreamTracks(currentStream);
-                currentStream = null;
-            }
-
-            videoElement.pause();
-            videoElement.srcObject = null;
-            videoElement.style.display = 'none';
-            videoPlaceholder.style.display = 'block';
-
-            isRequesting = false;
-            btnStart.disabled = false;
-            btnStop.disabled = true;
-            readerState.textContent = 'Inactivo';
-            readerState.style.color = '';
-
-            if (reasonMessage) {
-                log(reasonMessage);
-            }
-        }
-
-        async function startCamera() {
-            if (isRequesting || currentStream) return;
-
-            if (!window.isSecureContext) {
-                log('Error de seguridad: La API de la cámara requiere un contexto seguro (HTTPS o localhost).', true);
-                return;
-            }
-
-            if (!hasGetUserMedia) {
-                log('El navegador no soporta la API getUserMedia.', true);
-                return;
-            }
-
-            // Comprobación de disponibilidad de ZXing Browser
-            if (typeof ZXingBrowser === 'undefined' || !ZXingBrowser.BrowserMultiFormatOneDReader || !ZXingBrowser.BarcodeFormat) {
-                log('Error: La biblioteca ZXing (@zxing/browser) no está disponible o no es compatible.', true);
-                readerState.textContent = 'No disponible';
-                return;
-            }
-
-            isRequesting = true;
-            btnStart.disabled = true;
-            btnStop.disabled = true;
-            
-            const currentRequestId = ++activeRequestId;
-            log('Solicitando acceso a la cámara trasera y preparando lector...');
-
-            const constraints = {
-                video: {
-                    facingMode: { ideal: "environment" }
-                },
-                audio: false
-            };
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-
-                // Comprobación de concurrencia: si se invalidó durante getUserMedia
-                if (currentRequestId !== activeRequestId) {
-                    log('Solicitud invalidada antes de reproducir. Liberando stream local...');
-                    stopStreamTracks(stream);
-                    return;
-                }
-
-                currentStream = stream;
-
-                currentStream.getTracks().forEach(track => {
-                    track.onended = () => {
-                        if (currentStream === stream) {
-                            log('Transmisión de cámara finalizada por el sistema operativo o interrupción externa.');
-                            stopCamera();
-                        }
-                    };
-                });
-
-                videoElement.srcObject = currentStream;
-                await videoElement.play();
-
-                // Comprobación de concurrencia: si se invalidó durante video.play()
-                if (currentRequestId !== activeRequestId) {
-                    log('Solicitud cancelada durante la reproducción. Liberando stream local...');
-                    stopStreamTracks(stream);
-                    if (videoElement.srcObject === stream) {
-                        videoElement.pause();
-                        videoElement.srcObject = null;
-                        videoElement.style.display = 'none';
-                        videoPlaceholder.style.display = 'block';
-                    }
-                    return;
-                }
-
-                videoElement.style.display = 'block';
-                videoPlaceholder.style.display = 'none';
-                
-                btnStart.disabled = true;
-                btnStop.disabled = false;
-                log('¡Cámara abierta y transmitiendo con éxito!');
-
-                // Inicializar ZXing utilizando BrowserMultiFormatOneDReader (exportaciones de ZXingBrowser)
-                const codeReader = new ZXingBrowser.BrowserMultiFormatOneDReader();
-                
-                readerState.textContent = 'Escaneando...';
-                readerState.style.color = getComputedStyle(document.documentElement).getPropertyValue('--success').trim() || '#16a34a';
-                log('Lector ZXing 1D iniciado (EAN-13, EAN-8).');
-
-                // decodeFromVideoElement devuelve una promesa que resuelve en IScannerControls
-                const controls = await codeReader.decodeFromVideoElement(videoElement, (result, error) => {
-                    if (currentRequestId !== activeRequestId) return;
-
-                    if (result) {
-                        const format = result.getBarcodeFormat();
-                        const EAN_13 = ZXingBrowser.BarcodeFormat.EAN_13;
-                        const EAN_8 = ZXingBrowser.BarcodeFormat.EAN_8;
-
-                        // Filtrar y aceptar exclusivamente resultados EAN_13 o EAN_8
-                        if (format === EAN_13 || format === EAN_8) {
-                            const text = result.getText();
-                            const formatName = format === EAN_13 ? 'EAN_13' : 'EAN_8';
-
-                            if (text !== lastScannedCode) {
-                                lastScannedCode = text;
-                                barcodeValue.textContent = text;
-                                barcodeFormat.textContent = formatName;
-                                log(`Código detectado [${formatName}]: ${text}`);
-                            }
-                        }
-                    }
-                });
-
-                // Verificación de concurrencia post-resolución del lector
-                if (currentRequestId !== activeRequestId) {
-                    log('Solicitud invalidada tras iniciar el lector. Deteniendo controles locales...');
-                    if (controls) {
-                        controls.stop();
-                    }
-                    stopStreamTracks(stream);
-                    return;
-                }
-
-                // Asignar controles exclusivamente a la sesión activa actual
-                scannerControls = controls;
-
-            } catch (error) {
-                if (currentRequestId === activeRequestId) {
-                    handleCameraError(error);
-                    stopCamera();
-                } else {
-                    log('Error en solicitud invalidada omitido.');
-                }
-            } finally {
-                if (currentRequestId === activeRequestId) {
-                    isRequesting = false;
-                }
-            }
-        }
-
-        btnStart.addEventListener('click', () => {
-            lastScannedCode = null; 
-            barcodeValue.textContent = '-';
-            barcodeFormat.textContent = '-';
-            startCamera();
-        });
-
-        btnStop.addEventListener('click', () => stopCamera('Cámara cerrada y recursos liberados correctamente.'));
-
-        // Manejo de ciclo de vida de la página (segundo plano / ocultar)
-        function handleLifecycleInvalidation() {
-            if (currentStream || isRequesting || scannerControls) {
-                stopCamera('Página ocultada o en segundo plano. Recursos y lector liberados.');
-            }
-        }
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                handleLifecycleInvalidation();
-            }
-        });
-
-        window.addEventListener('pagehide', handleLifecycleInvalidation);
-    </script>
 </body>
 </html>
