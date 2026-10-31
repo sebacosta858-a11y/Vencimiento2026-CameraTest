@@ -1,6 +1,52 @@
 /**
- * Vencimiento2026 — Lógica modular de interfaz (js/app.js)
+ * Vencimiento2026 — Lógica modular de interfaz y persistencia (js/app.js)
  */
+
+let dbModuleInstance = null;
+let dbConnection = null;
+let initPromise = null;
+
+/**
+ * Función pública para solicitar la conexión a IndexedDB de manera controlada.
+ * Permite que futuros módulos obtengan la conexión de forma segura y concurrente.
+ * 
+ * @returns {Promise<IDBDatabase>} Promesa que se resuelve con la conexión activa.
+ */
+window.getDatabaseConnection = async function() {
+    // 1. Devolver la conexión existente si ya está abierta y disponible
+    if (dbConnection) {
+        return dbConnection;
+    }
+
+    // 2 y 7. Si hay una inicialización en curso, esperar a que termine (permite solicitudes simultáneas)
+    if (initPromise) {
+        return await initPromise;
+    }
+
+    // 3 y 4. Iniciar la carga del módulo y apertura reutilizando la protección openPromise de database.js
+    initPromise = (async () => {
+        try {
+            if (!dbModuleInstance) {
+                dbModuleInstance = await import(new URL('js/database.js', document.baseURI).href);
+            }
+            dbConnection = await dbModuleInstance.openDatabase();
+
+            // Registrar listener para versionchange utilizando addEventListener sin sobrescribir onversionchange de database.js
+            dbConnection.addEventListener('versionchange', () => {
+                dbConnection = null;
+            });
+
+            return dbConnection;
+        } catch (error) {
+            dbConnection = null;
+            throw new Error(`Error al obtener la conexión a IndexedDB: ${error.message || error}`);
+        } finally {
+            initPromise = null;
+        }
+    })();
+
+    return await initPromise;
+};
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Actualización automática de la fecha según el dispositivo
@@ -12,7 +58,17 @@ document.addEventListener('DOMContentLoaded', () => {
         currentDateEl.textContent = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
     }
 
-    // 2. Función centralizada de navegación entre secciones sin recargar la página
+    // 2. Inicialización asíncrona y aislada de IndexedDB al cargar la app mediante la función pública
+    (async () => {
+        try {
+            await window.getDatabaseConnection();
+            console.log('Vencimiento2026DB inicializada y abierta correctamente.');
+        } catch (error) {
+            console.error('Error al inicializar IndexedDB (no bloqueante):', error);
+        }
+    })();
+
+    // 3. Función centralizada de navegación entre secciones sin recargar la página
     function navigateToSection(targetId) {
         const targetSection = document.getElementById(targetId);
         if (!targetSection) return false;
@@ -45,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return true;
     }
 
-    // 3. Configurar eventos de clic en los enlaces del menú lateral
+    // 4. Configurar eventos de clic en los enlaces del menú lateral
     const navLinks = document.querySelectorAll('.sidebar-nav a');
     navLinks.forEach(link => {
         link.addEventListener('click', (e) => {
@@ -63,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 4. Botón de configuración del encabezado
+    // 5. Botón de configuración del encabezado
     const btnConfigHeader = document.getElementById('btnConfigHeader');
     if (btnConfigHeader) {
         btnConfigHeader.addEventListener('click', (e) => {
@@ -74,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 5. Menú lateral de escritorio (Expandir / Contraer) con ARIA
+    // 6. Menú lateral de escritorio (Expandir / Contraer) con ARIA
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
     const appLayout = document.getElementById('appLayout');
@@ -90,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // 6. Menú móvil con gestión de inert y retorno de foco
+    // 7. Menú móvil con gestión de inert y retorno de foco
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
     const sidebarBackdrop = document.getElementById('sidebarBackdrop');
