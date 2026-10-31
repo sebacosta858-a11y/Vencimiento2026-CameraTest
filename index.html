@@ -1,76 +1,332 @@
 <!DOCTYPE html>
-
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-```
-<title>Vencimiento2026 — Prueba de cámara</title>
-
-<link rel="stylesheet" href="css/styles.css">
-
-<!-- Biblioteca ZXing Browser 0.2.1 -->
-<script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
-```
-
+    <title>Vencimiento2026 — Panel Administrativo</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Biblioteca ZXing Browser 0.2.1 requerida para el escáner -->
+    <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
 </head>
-
 <body>
-    <div class="container">
-        <h1>Vencimiento2026 — Prueba de cámara</h1>
+    <div class="app-layout" id="appLayout">
+        <!-- Fondo oscurecido para menú móvil -->
+        <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
-```
-    <div class="status-box">
-        <div class="status-item">
-            <span>Contexto Seguro (HTTPS / Local):</span>
-            <span id="secureStatus" class="badge">Verificando...</span>
-        </div>
+        <!-- Menú Lateral -->
+        <aside class="sidebar" id="sidebar" aria-label="Menú principal">
+            <div class="sidebar-header">
+                <div class="sidebar-brand">
+                    <span class="brand-icon">📦</span>
+                    <span class="brand-text">Vencimiento2026</span>
+                </div>
+                <button class="sidebar-toggle" id="sidebarToggle" aria-label="Contraer menú de escritorio" aria-expanded="true" aria-controls="sidebar" title="Contraer/Expandir menú">
+                    ◀
+                </button>
+                <button class="sidebar-close-mobile" id="sidebarCloseMobile" aria-label="Cerrar menú móvil">
+                    ✕
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active">
+                        <a href="#inicio" title="Inicio">
+                            <span class="nav-icon">🏠</span>
+                            <span class="nav-text">Inicio</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#inventario-pft" title="Inventario PFT">
+                            <span class="nav-icon">📊</span>
+                            <span class="nav-text">Inventario PFT</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#inventario-pgc" title="Inventario PGC/DPH">
+                            <span class="nav-icon">📋</span>
+                            <span class="nav-text">Inventario PGC/DPH</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#importar" title="Importar Excel">
+                            <span class="nav-icon">📁</span>
+                            <span class="nav-text">Importar Excel</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#historial" title="Historial de importaciones">
+                            <span class="nav-icon">⏳</span>
+                            <span class="nav-text">Historial de importaciones</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#configuracion" title="Configuración">
+                            <span class="nav-icon">⚙️</span>
+                            <span class="nav-text">Configuración</span>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
 
-        <div class="status-item">
-            <span>API getUserMedia:</span>
-            <span id="apiStatus" class="badge">Verificando...</span>
-        </div>
+        <!-- Contenido Principal -->
+        <main class="main-content">
+            <!-- Encabezado -->
+            <header class="app-header">
+                <div class="header-left-group">
+                    <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Abrir menú móvil" aria-expanded="false" aria-controls="sidebar" title="Menú">
+                        ☰
+                    </button>
+                    <div class="header-titles">
+                        <h1>Vencimiento2026</h1>
+                        <p class="subtitle">Sistema de control de vencimientos e inventario</p>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <div class="current-date" id="currentDate">Cargando fecha...</div>
+                    <button class="btn-config" id="btnConfigHeader" aria-label="Configuración del sistema" title="Configuración">⚙️ Configuración</button>
+                </div>
+            </header>
+
+            <!-- Aviso de datos de demostración -->
+            <div class="demo-banner">
+                ⚠️ <strong>Modo Demostración:</strong> Visualizando datos ficticios para validación de interfaz. Las operaciones de inventario real e IndexedDB están inactivas en esta etapa.
+            </div>
+
+            <!-- Indicadores Principales (4 Tarjetas) -->
+            <section class="metrics-grid" id="inicio">
+                <div class="metric-card expired">
+                    <div class="metric-header">
+                        <h3>Vencidos</h3>
+                        <span class="badge-status">🔴 Crítico</span>
+                    </div>
+                    <div class="metric-body">
+                        <div class="metric-item">
+                            <span class="metric-label">Unidades físicas:</span>
+                            <span class="metric-value">142</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Productos distintos:</span>
+                            <span class="metric-value">28</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Registros afectados:</span>
+                            <span class="metric-value">35</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card warning-high">
+                    <div class="metric-header">
+                        <h3>Vencen en 0–7 días</h3>
+                        <span class="badge-status">🟠 Urgente</span>
+                    </div>
+                    <div class="metric-body">
+                        <div class="metric-item">
+                            <span class="metric-label">Unidades físicas:</span>
+                            <span class="metric-value">310</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Productos distintos:</span>
+                            <span class="metric-value">64</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Registros afectados:</span>
+                            <span class="metric-value">79</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card warning-med">
+                    <div class="metric-header">
+                        <h3>Vencen en 8–30 días</h3>
+                        <span class="badge-status">🟡 Atención</span>
+                    </div>
+                    <div class="metric-body">
+                        <div class="metric-item">
+                            <span class="metric-label">Unidades físicas:</span>
+                            <span class="metric-value">850</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Productos distintos:</span>
+                            <span class="metric-value">142</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Registros afectados:</span>
+                            <span class="metric-value">198</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metric-card safe">
+                    <div class="metric-header">
+                        <h3>Vencen en 31–60 días</h3>
+                        <span class="badge-status">🟢 Normal</span>
+                    </div>
+                    <div class="metric-body">
+                        <div class="metric-item">
+                            <span class="metric-label">Unidades físicas:</span>
+                            <span class="metric-value">2,430</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Productos distintos:</span>
+                            <span class="metric-value">410</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Registros afectados:</span>
+                            <span class="metric-value">520</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Resumen por Sector (2 Tarjetas) -->
+            <section class="sectors-grid">
+                <div class="sector-card">
+                    <div class="sector-header">
+                        <h2>Sector PFT</h2>
+                        <span class="sector-badge">Productos Frescos y Tradicionales</span>
+                    </div>
+                    <div class="sector-body">
+                        <div class="sector-row">
+                            <span>Total de productos:</span>
+                            <strong>315</strong>
+                        </div>
+                        <div class="sector-row">
+                            <span>Total de unidades:</span>
+                            <strong>1,840</strong>
+                        </div>
+                        <div class="sector-row">
+                            <span>Registros próximos a vencer:</span>
+                            <strong class="text-warning">84</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sector-card">
+                    <div class="sector-header">
+                        <h2>Sector PGC / DPH</h2>
+                        <span class="sector-badge">Almacén y Perfumería / Higiene</span>
+                    </div>
+                    <div class="sector-body">
+                        <div class="sector-row">
+                            <span>Total de productos:</span>
+                            <strong>339</strong>
+                        </div>
+                        <div class="sector-row">
+                            <span>Total de unidades:</span>
+                            <strong>1,892</strong>
+                        </div>
+                        <div class="sector-row">
+                            <span>Registros próximos a vencer:</span>
+                            <strong class="text-danger">128</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Actividad Reciente -->
+            <section class="activity-section">
+                <div class="section-header">
+                    <h2>Actividad Reciente (Demostración)</h2>
+                    <span class="section-subtitle">Últimos registros escaneados o ingresados en el sistema</span>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th>EAN</th>
+                                <th>Fecha de Vencimiento</th>
+                                <th>Cantidad</th>
+                                <th>Sector</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Leche Entera Larga Vida 1L</td>
+                                <td>7791234567890</td>
+                                <td>02/11/2026</td>
+                                <td>24</td>
+                                <td><span class="badge-sector pft">PFT</span></td>
+                            </tr>
+                            <tr>
+                                <td>Yogur Firme Frutilla 190g</td>
+                                <td>7799876543210</td>
+                                <td>05/11/2026</td>
+                                <td>12</td>
+                                <td><span class="badge-sector pft">PFT</span></td>
+                            </tr>
+                            <tr>
+                                <td>Galletitas Dulces con Chip 150g</td>
+                                <td>7794561237890</td>
+                                <td>18/11/2026</td>
+                                <td>36</td>
+                                <td><span class="badge-sector pgc">PGC/DPH</span></td>
+                            </tr>
+                            <tr>
+                                <td>Jabón de Tocador 3x90g</td>
+                                <td>7797894561230</td>
+                                <td>15/12/2026</td>
+                                <td>18</td>
+                                <td><span class="badge-sector pgc">PGC/DPH</span></td>
+                            </tr>
+                            <tr>
+                                <td>Fideos Spaghetti 500g</td>
+                                <td>7793216549870</td>
+                                <td>28/12/2026</td>
+                                <td>50</td>
+                                <td><span class="badge-sector pgc">PGC/DPH</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Sección de Pruebas del Escáner (Conservando los 10 identificadores obligatorios) -->
+            <section class="scanner-test-section" id="configuracion">
+                <div class="section-header">
+                    <h2>Módulo de Escáner (Prueba Técnica)</h2>
+                    <span class="section-subtitle">Módulo operativo integrado sin alterar la lógica de scanner.js</span>
+                </div>
+                
+                <div class="scanner-panel">
+                    <div class="status-box">
+                        <div class="status-item">
+                            <span>Contexto Seguro (HTTPS / Local):</span>
+                            <span id="secureStatus" class="badge">Verificando...</span>
+                        </div>
+                        <div class="status-item">
+                            <span>API getUserMedia:</span>
+                            <span id="apiStatus" class="badge">Verificando...</span>
+                        </div>
+                    </div>
+
+                    <div class="result-box">
+                        <div class="result-item"><strong>Lector:</strong> <span id="readerState">Inactivo</span></div>
+                        <div class="result-item"><strong>Código leído:</strong> <span id="barcodeValue">-</span></div>
+                        <div class="result-item"><strong>Formato:</strong> <span id="barcodeFormat">-</span></div>
+                    </div>
+
+                    <div class="controls">
+                        <button id="btnStart" class="btn-primary-action">Solicitar permiso y abrir cámara</button>
+                        <button id="btnStop" class="btn-primary-action danger" disabled>Cerrar cámara</button>
+                    </div>
+
+                    <div class="video-container">
+                        <div id="videoPlaceholder" class="video-placeholder">La cámara está desactivada</div>
+                        <video id="videoElement" autoplay playsinline muted></video>
+                    </div>
+
+                    <div id="logArea" class="log-area">Estado: Esperando acción del usuario...</div>
+                </div>
+            </section>
+        </main>
     </div>
 
-    <div class="result-box">
-        <div class="result-item">
-            <strong>Lector:</strong>
-            <span id="readerState">Inactivo</span>
-        </div>
-
-        <div class="result-item">
-            <strong>Código leído:</strong>
-            <span id="barcodeValue">-</span>
-        </div>
-
-        <div class="result-item">
-            <strong>Formato:</strong>
-            <span id="barcodeFormat">-</span>
-        </div>
-    </div>
-
-    <div class="controls">
-        <button id="btnStart">Solicitar permiso y abrir cámara</button>
-        <button id="btnStop" class="danger" disabled>Cerrar cámara</button>
-    </div>
-
-    <div class="video-container">
-        <div id="videoPlaceholder" class="video-placeholder">
-            La cámara está desactivada
-        </div>
-
-        <video id="videoElement" autoplay playsinline muted></video>
-    </div>
-
-    <div id="logArea" class="log-area">
-        Estado: Esperando acción del usuario...
-    </div>
-</div>
-
-<!-- Código JavaScript del escáner -->
-<script src="js/scanner.js"></script>
-```
-
+    <!-- Script del escáner original (INTOCABLE) -->
+    <script src="js/scanner.js"></script>
+    <!-- Script modular de interfaz -->
+    <script src="js/app.js"></script>
 </body>
 </html>
