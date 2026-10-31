@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vencimiento2026 — Prueba de cámara</title>
+    <!-- Importación de la biblioteca @zxing/browser desde CDN oficial UMD -->
+    <script src="https://unpkg.com/@zxing/browser@0.2.1/umd/zxing-browser.min.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -115,6 +117,20 @@
             text-align: center;
             padding: 20px;
         }
+        .result-box {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+        }
+        .result-item {
+            margin-bottom: 4px;
+        }
+        .result-item:last-child {
+            margin-bottom: 0;
+        }
         .log-area {
             background: #0f172a;
             color: #38bdf8;
@@ -144,6 +160,12 @@
             </div>
         </div>
 
+        <div class="result-box">
+            <div class="result-item"><strong>Lector:</strong> <span id="readerState">Inactivo</span></div>
+            <div class="result-item"><strong>Código leído:</strong> <span id="barcodeValue">-</span></div>
+            <div class="result-item"><strong>Formato:</strong> <span id="barcodeFormat">-</span></div>
+        </div>
+
         <div class="controls">
             <button id="btnStart">Solicitar permiso y abrir cámara</button>
             <button id="btnStop" class="danger" disabled>Cerrar cámara</button>
@@ -165,10 +187,15 @@
         const videoElement = document.getElementById('videoElement');
         const videoPlaceholder = document.getElementById('videoPlaceholder');
         const logArea = document.getElementById('logArea');
+        const readerState = document.getElementById('readerState');
+        const barcodeValue = document.getElementById('barcodeValue');
+        const barcodeFormat = document.getElementById('barcodeFormat');
 
         let currentStream = null;
         let isRequesting = false;
         let activeRequestId = 0;
+        let scannerControls = null; 
+        let lastScannedCode = null; 
 
         // Verificación de contexto seguro y soporte de la API
         const isSecure = window.isSecureContext;
@@ -192,7 +219,7 @@
             switch (errorName) {
                 case 'NotAllowedError':
                 case 'PermissionDeniedError':
-                    userMessage = 'Permiso denegado. Debes autorizar el acceso a la cámara en los ajustes de Safari o tu dispositivo.';
+                    userMessage = 'Permiso denegado. Debes autorizar el acceso a la cámara en los ajustes.';
                     break;
                 case 'NotFoundError':
                 case 'DevicesNotFoundError':
@@ -210,7 +237,7 @@
                     userMessage = 'Error de seguridad. La API requiere un contexto seguro (HTTPS o localhost).';
                     break;
                 case 'AbortError':
-                    userMessage = 'La solicitud de la cámara fue abortada por un problema de hardware o interrupción del sistema.';
+                    userMessage = 'La solicitud de la cámara fue abortada por interrupción del sistema.';
                     break;
                 default:
                     userMessage = `Error imprevisto (${errorName}): ${error.message || 'Sin descripción'}`;
@@ -220,7 +247,7 @@
             log(`Error: ${userMessage}`, true);
         }
 
-        // Liberación de MediaStreamTracks
+        // Liberación de pistas individuales del MediaStream
         function stopStreamTracks(streamToStop) {
             if (!streamToStop) return;
             streamToStop.getTracks().forEach(track => {
@@ -229,9 +256,18 @@
             });
         }
 
-        // Función centralizada para detener la cámara y resetear la UI
+        // Función centralizada para detener la cámara y el lector de ZXing de la sesión activa
         function stopCamera(reasonMessage) {
-            activeRequestId++; // Invalida cualquier getUserMedia pendiente en curso
+            activeRequestId++; // Invalida cualquier operación pendiente
+
+            if (scannerControls) {
+                try {
+                    scannerControls.stop();
+                } catch (e) {
+                    // Silenciar errores menores si ya estaba detenido
+                }
+                scannerControls = null;
+            }
             
             if (currentStream) {
                 stopStreamTracks(currentStream);
@@ -246,6 +282,8 @@
             isRequesting = false;
             btnStart.disabled = false;
             btnStop.disabled = true;
+            readerState.textContent = 'Inactivo';
+            readerState.style.color = '';
 
             if (reasonMessage) {
                 log(reasonMessage);
@@ -265,12 +303,19 @@
                 return;
             }
 
+            // Comprobación de disponibilidad de ZXing Browser
+            if (typeof ZXingBrowser === 'undefined' || !ZXingBrowser.BrowserMultiFormatOneDReader || !ZXingBrowser.BarcodeFormat) {
+                log('Error: La biblioteca ZXing (@zxing/browser) no está disponible o no es compatible.', true);
+                readerState.textContent = 'No disponible';
+                return;
+            }
+
             isRequesting = true;
             btnStart.disabled = true;
             btnStop.disabled = true;
             
             const currentRequestId = ++activeRequestId;
-            log('Solicitando acceso a la cámara trasera...');
+            log('Solicitando acceso a la cámara trasera y preparando lector...');
 
             const constraints = {
                 video: {
@@ -282,7 +327,7 @@
             try {
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-                // Validación 1: Si fue invalidada durante getUserMedia, libera exclusivamente su propio stream
+                // Comprobación de concurrencia: si se invalidó durante getUserMedia
                 if (currentRequestId !== activeRequestId) {
                     log('Solicitud invalidada antes de reproducir. Liberando stream local...');
                     stopStreamTracks(stream);
@@ -291,7 +336,6 @@
 
                 currentStream = stream;
 
-                // Escuchar eventos de finalización inesperada en las pistas del stream actual
                 currentStream.getTracks().forEach(track => {
                     track.onended = () => {
                         if (currentStream === stream) {
@@ -304,7 +348,7 @@
                 videoElement.srcObject = currentStream;
                 await videoElement.play();
 
-                // Validación 2: Si fue invalidada durante video.play(), libera exclusivamente su propio stream y limpia solo si corresponde
+                // Comprobación de concurrencia: si se invalidó durante video.play()
                 if (currentRequestId !== activeRequestId) {
                     log('Solicitud cancelada durante la reproducción. Liberando stream local...');
                     stopStreamTracks(stream);
@@ -324,6 +368,50 @@
                 btnStop.disabled = false;
                 log('¡Cámara abierta y transmitiendo con éxito!');
 
+                // Inicializar ZXing utilizando BrowserMultiFormatOneDReader (exportaciones de ZXingBrowser)
+                const codeReader = new ZXingBrowser.BrowserMultiFormatOneDReader();
+                
+                readerState.textContent = 'Escaneando...';
+                readerState.style.color = getComputedStyle(document.documentElement).getPropertyValue('--success').trim() || '#16a34a';
+                log('Lector ZXing 1D iniciado (EAN-13, EAN-8).');
+
+                // decodeFromVideoElement devuelve una promesa que resuelve en IScannerControls
+                const controls = await codeReader.decodeFromVideoElement(videoElement, (result, error) => {
+                    if (currentRequestId !== activeRequestId) return;
+
+                    if (result) {
+                        const format = result.getBarcodeFormat();
+                        const EAN_13 = ZXingBrowser.BarcodeFormat.EAN_13;
+                        const EAN_8 = ZXingBrowser.BarcodeFormat.EAN_8;
+
+                        // Filtrar y aceptar exclusivamente resultados EAN_13 o EAN_8
+                        if (format === EAN_13 || format === EAN_8) {
+                            const text = result.getText();
+                            const formatName = format === EAN_13 ? 'EAN_13' : 'EAN_8';
+
+                            if (text !== lastScannedCode) {
+                                lastScannedCode = text;
+                                barcodeValue.textContent = text;
+                                barcodeFormat.textContent = formatName;
+                                log(`Código detectado [${formatName}]: ${text}`);
+                            }
+                        }
+                    }
+                });
+
+                // Verificación de concurrencia post-resolución del lector
+                if (currentRequestId !== activeRequestId) {
+                    log('Solicitud invalidada tras iniciar el lector. Deteniendo controles locales...');
+                    if (controls) {
+                        controls.stop();
+                    }
+                    stopStreamTracks(stream);
+                    return;
+                }
+
+                // Asignar controles exclusivamente a la sesión activa actual
+                scannerControls = controls;
+
             } catch (error) {
                 if (currentRequestId === activeRequestId) {
                     handleCameraError(error);
@@ -338,13 +426,19 @@
             }
         }
 
-        btnStart.addEventListener('click', startCamera);
+        btnStart.addEventListener('click', () => {
+            lastScannedCode = null; 
+            barcodeValue.textContent = '-';
+            barcodeFormat.textContent = '-';
+            startCamera();
+        });
+
         btnStop.addEventListener('click', () => stopCamera('Cámara cerrada y recursos liberados correctamente.'));
 
-        // Eventos de ciclo de vida de la página para liberación inmediata de cámara (activa o pendiente)
+        // Manejo de ciclo de vida de la página (segundo plano / ocultar)
         function handleLifecycleInvalidation() {
-            if (currentStream || isRequesting) {
-                stopCamera('Página ocultada o en segundo plano. Recursos liberados.');
+            if (currentStream || isRequesting || scannerControls) {
+                stopCamera('Página ocultada o en segundo plano. Recursos y lector liberados.');
             }
         }
 
