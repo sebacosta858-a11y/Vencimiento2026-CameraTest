@@ -12,18 +12,69 @@ document.addEventListener('DOMContentLoaded', () => {
         currentDateEl.textContent = formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
     }
 
-    // Enlace del botón de configuración del encabezado hacia la sección de pruebas/configuración
+    // 2. Función centralizada de navegación entre secciones sin recargar la página
+    function navigateToSection(targetId) {
+        const targetSection = document.getElementById(targetId);
+        if (!targetSection) return false;
+
+        // Ocultar todas las secciones con la clase app-section
+        const sections = document.querySelectorAll('.app-section');
+        sections.forEach(sec => {
+            sec.hidden = true;
+        });
+
+        // Mostrar únicamente la sección correspondiente al destino
+        targetSection.hidden = false;
+
+        // Sincronizar la clase active del elemento <li> en el menú lateral
+        const navLinks = document.querySelectorAll('.sidebar-nav a');
+        navLinks.forEach(link => {
+            const li = link.closest('li');
+            if (li) {
+                const href = link.getAttribute('href');
+                if (href === `#${targetId}` || href === `#` + targetId) {
+                    li.classList.add('active');
+                } else {
+                    li.classList.remove('active');
+                }
+            }
+        });
+
+        // Llevar la vista al comienzo del contenido principal suavemente
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return true;
+    }
+
+    // 3. Configurar eventos de clic en los enlaces del menú lateral
+    const navLinks = document.querySelectorAll('.sidebar-nav a');
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const href = link.getAttribute('href');
+            if (href && href.startsWith('#')) {
+                const targetId = href.substring(1);
+                if (document.getElementById(targetId)) {
+                    navigateToSection(targetId);
+                    if (window.innerWidth <= 768) {
+                        closeMobileMenu(true);
+                    }
+                }
+            }
+        });
+    });
+
+    // 4. Botón de configuración del encabezado
     const btnConfigHeader = document.getElementById('btnConfigHeader');
     if (btnConfigHeader) {
-        btnConfigHeader.addEventListener('click', () => {
-            const configSection = document.getElementById('configuracion');
-            if (configSection) {
-                configSection.scrollIntoView({ behavior: 'smooth' });
+        btnConfigHeader.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (document.getElementById('configuracion')) {
+                navigateToSection('configuracion');
             }
         });
     }
 
-    // 2. Menú lateral de escritorio (Expandir / Contraer) con ARIA
+    // 5. Menú lateral de escritorio (Expandir / Contraer) con ARIA
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
     const appLayout = document.getElementById('appLayout');
@@ -33,14 +84,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const isCollapsed = sidebar.classList.toggle('collapsed');
             appLayout.classList.toggle('sidebar-collapsed', isCollapsed);
 
-            // Actualización de atributos de accesibilidad
             sidebarToggle.setAttribute('aria-expanded', !isCollapsed);
             sidebarToggle.setAttribute('aria-label', isCollapsed ? 'Expandir menú de escritorio' : 'Contraer menú de escritorio');
             sidebarToggle.textContent = isCollapsed ? '▶' : '◀';
         });
     }
 
-    // 3 & 4 & 5 & 6. Menú móvil con gestión de inert y retorno de foco
+    // 6. Menú móvil con gestión de inert y retorno de foco
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const sidebarCloseMobile = document.getElementById('sidebarCloseMobile');
     const sidebarBackdrop = document.getElementById('sidebarBackdrop');
@@ -59,7 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Inicializar estado inert en carga móvil
     updateMobileInert();
 
     function openMobileMenu() {
@@ -102,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
         sidebarBackdrop.addEventListener('click', () => closeMobileMenu(true));
     }
 
-    // Tecla Escape
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (sidebar && sidebar.classList.contains('mobile-open')) {
@@ -111,19 +159,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Enlaces de navegación: cerrar menú sin forzar foco al botón (returnFocus = false)
-    const navLinks = document.querySelectorAll('.sidebar-nav a');
-    navLinks.forEach(link => {
-        link.addEventListener('click', () => {
-            if (window.innerWidth <= 768) {
-                closeMobileMenu(false);
-            }
-        });
-    });
+    let wasDesktop = window.innerWidth > 768;
 
-    // Listener de redimensionamiento de ventana (window.resize)
     window.addEventListener('resize', () => {
-        if (window.innerWidth > 768) {
+        const isNowDesktop = window.innerWidth > 768;
+
+        if (!wasDesktop && isNowDesktop) {
             if (sidebar) {
                 sidebar.classList.remove('mobile-open');
                 sidebar.removeAttribute('inert');
@@ -134,9 +175,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (mobileMenuBtn) {
                 mobileMenuBtn.setAttribute('aria-expanded', 'false');
             }
-        } else {
-            // Al volver a 768px o menos, mantenerlo cerrado inicialmente aplicando inert
-            updateMobileInert();
+        } else if (wasDesktop && !isNowDesktop) {
+            if (sidebar) {
+                sidebar.classList.remove('mobile-open');
+                sidebar.setAttribute('inert', '');
+            }
+            if (sidebarBackdrop) {
+                sidebarBackdrop.classList.remove('active');
+            }
+            if (mobileMenuBtn) {
+                mobileMenuBtn.setAttribute('aria-expanded', 'false');
+            }
         }
+
+        wasDesktop = isNowDesktop;
     });
 });

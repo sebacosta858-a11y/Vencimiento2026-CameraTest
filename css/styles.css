@@ -732,3 +732,7 @@ video {
         padding: 16px;
     }
 }
+/* Garantizar que las secciones inactivas permanezcan ocultas */
+.app-section[hidden] {
+    display: none !important;
+}
