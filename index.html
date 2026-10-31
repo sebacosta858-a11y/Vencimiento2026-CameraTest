@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vencimiento2026 — Prueba de cámara</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+            --success: #16a34a;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .container {
+            width: 100%;
+            max-width: 480px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 1.25rem;
+            margin-top: 0;
+            margin-bottom: 16px;
+            text-align: center;
+            color: var(--text);
+        }
+        .status-box {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        .badge {
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        .badge.true { background: #dcfce7; color: var(--success); }
+        .badge.false { background: #fee2e2; color: var(--danger); }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        button:disabled { background-color: var(--border); color: #94a3b8; cursor: not-allowed; }
+        button.danger { background-color: var(--danger); }
+        button.danger:hover { background-color: var(--danger-hover); }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            aspect-ratio: 4 / 3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .video-placeholder {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 20px;
+        }
+        .log-area {
+            background: #0f172a;
+            color: #38bdf8;
+            font-family: monospace;
+            font-size: 0.8rem;
+            padding: 12px;
+            border-radius: 8px;
+            max-height: 140px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Vencimiento2026 — Prueba de cámara</h1>
+        
+        <div class="status-box">
+            <div class="status-item">
+                <span>Contexto Seguro (HTTPS / Local):</span>
+                <span id="secureStatus" class="badge">Verificando...</span>
+            </div>
+            <div class="status-item">
+                <span>API getUserMedia:</span>
+                <span id="apiStatus" class="badge">Verificando...</span>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="btnStart">Solicitar permiso y abrir cámara</button>
+            <button id="btnStop" class="danger" disabled>Cerrar cámara</button>
+        </div>
+
+        <div class="video-container">
+            <div id="videoPlaceholder" class="video-placeholder">La cámara está desactivada</div>
+            <video id="videoElement" autoplay playsinline muted></video>
+        </div>
+
+        <div id="logArea" class="log-area">Estado: Esperando acción del usuario...</div>
+    </div>
+
+    <script>
+        const secureStatus = document.getElementById('secureStatus');
+        const apiStatus = document.getElementById('apiStatus');
+        const btnStart = document.getElementById('btnStart');
+        const btnStop = document.getElementById('btnStop');
+        const videoElement = document.getElementById('videoElement');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
+        const logArea = document.getElementById('logArea');
+
+        let currentStream = null;
+        let isRequesting = false;
+        let activeRequestId = 0;
+
+        // Verificación de contexto seguro y soporte de la API
+        const isSecure = window.isSecureContext;
+        secureStatus.textContent = isSecure ? 'Sí' : 'No';
+        secureStatus.className = `badge ${isSecure}`;
+
+        const hasGetUserMedia = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        apiStatus.textContent = hasGetUserMedia ? 'Disponible' : 'No disponible';
+        apiStatus.className = `badge ${hasGetUserMedia}`;
+
+        function log(message, isError = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            logArea.textContent = `[${timestamp}] ${message}\n` + logArea.textContent;
+            console.log(message);
+        }
+
+        function handleCameraError(error) {
+            let userMessage = '';
+            const errorName = error.name || 'UnknownError';
+
+            switch (errorName) {
+                case 'NotAllowedError':
+                case 'PermissionDeniedError':
+                    userMessage = 'Permiso denegado. Debes autorizar el acceso a la cámara en los ajustes de Safari o tu dispositivo.';
+                    break;
+                case 'NotFoundError':
+                case 'DevicesNotFoundError':
+                    userMessage = 'No se encontró ninguna cámara trasera compatible en el dispositivo.';
+                    break;
+                case 'NotReadableError':
+                case 'TrackStartError':
+                    userMessage = 'La cámara está siendo utilizada por otra aplicación o hay un bloqueo de hardware.';
+                    break;
+                case 'OverconstrainedError':
+                case 'ConstraintNotSatisfiedError':
+                    userMessage = 'No se pudo aplicar la restricción exacta (facingMode: environment).';
+                    break;
+                case 'SecurityError':
+                    userMessage = 'Error de seguridad. La API requiere un contexto seguro (HTTPS o localhost).';
+                    break;
+                case 'AbortError':
+                    userMessage = 'La solicitud de la cámara fue abortada por un problema de hardware o interrupción del sistema.';
+                    break;
+                default:
+                    userMessage = `Error imprevisto (${errorName}): ${error.message || 'Sin descripción'}`;
+                    break;
+            }
+
+            log(`Error: ${userMessage}`, true);
+        }
+
+        // Liberación de MediaStreamTracks
+        function stopStreamTracks(streamToStop) {
+            if (!streamToStop) return;
+            streamToStop.getTracks().forEach(track => {
+                track.onended = null;
+                track.stop();
+            });
+        }
+
+        // Función centralizada para detener la cámara y resetear la UI
+        function stopCamera(reasonMessage) {
+            activeRequestId++; // Invalida cualquier getUserMedia pendiente en curso
+            
+            if (currentStream) {
+                stopStreamTracks(currentStream);
+                currentStream = null;
+            }
+
+            videoElement.pause();
+            videoElement.srcObject = null;
+            videoElement.style.display = 'none';
+            videoPlaceholder.style.display = 'block';
+
+            isRequesting = false;
+            btnStart.disabled = false;
+            btnStop.disabled = true;
+
+            if (reasonMessage) {
+                log(reasonMessage);
+            }
+        }
+
+        async function startCamera() {
+            if (isRequesting || currentStream) return;
+
+            if (!window.isSecureContext) {
+                log('Error de seguridad: La API de la cámara requiere un contexto seguro (HTTPS o localhost).', true);
+                return;
+            }
+
+            if (!hasGetUserMedia) {
+                log('El navegador no soporta la API getUserMedia.', true);
+                return;
+            }
+
+            isRequesting = true;
+            btnStart.disabled = true;
+            btnStop.disabled = true;
+            
+            const currentRequestId = ++activeRequestId;
+            log('Solicitando acceso a la cámara trasera...');
+
+            const constraints = {
+                video: {
+                    facingMode: { ideal: "environment" }
+                },
+                audio: false
+            };
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                // Validación 1: Si fue invalidada durante getUserMedia, libera exclusivamente su propio stream
+                if (currentRequestId !== activeRequestId) {
+                    log('Solicitud invalidada antes de reproducir. Liberando stream local...');
+                    stopStreamTracks(stream);
+                    return;
+                }
+
+                currentStream = stream;
+
+                // Escuchar eventos de finalización inesperada en las pistas del stream actual
+                currentStream.getTracks().forEach(track => {
+                    track.onended = () => {
+                        if (currentStream === stream) {
+                            log('Transmisión de cámara finalizada por el sistema operativo o interrupción externa.');
+                            stopCamera();
+                        }
+                    };
+                });
+
+                videoElement.srcObject = currentStream;
+                await videoElement.play();
+
+                // Validación 2: Si fue invalidada durante video.play(), libera exclusivamente su propio stream y limpia solo si corresponde
+                if (currentRequestId !== activeRequestId) {
+                    log('Solicitud cancelada durante la reproducción. Liberando stream local...');
+                    stopStreamTracks(stream);
+                    if (videoElement.srcObject === stream) {
+                        videoElement.pause();
+                        videoElement.srcObject = null;
+                        videoElement.style.display = 'none';
+                        videoPlaceholder.style.display = 'block';
+                    }
+                    return;
+                }
+
+                videoElement.style.display = 'block';
+                videoPlaceholder.style.display = 'none';
+                
+                btnStart.disabled = true;
+                btnStop.disabled = false;
+                log('¡Cámara abierta y transmitiendo con éxito!');
+
+            } catch (error) {
+                if (currentRequestId === activeRequestId) {
+                    handleCameraError(error);
+                    stopCamera();
+                } else {
+                    log('Error en solicitud invalidada omitido.');
+                }
+            } finally {
+                if (currentRequestId === activeRequestId) {
+                    isRequesting = false;
+                }
+            }
+        }
+
+        btnStart.addEventListener('click', startCamera);
+        btnStop.addEventListener('click', () => stopCamera('Cámara cerrada y recursos liberados correctamente.'));
+
+        // Eventos de ciclo de vida de la página para liberación inmediata de cámara (activa o pendiente)
+        function handleLifecycleInvalidation() {
+            if (currentStream || isRequesting) {
+                stopCamera('Página ocultada o en segundo plano. Recursos liberados.');
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                handleLifecycleInvalidation();
+            }
+        });
+
+        window.addEventListener('pagehide', handleLifecycleInvalidation);
+    </script>
+</body>
+</html>
